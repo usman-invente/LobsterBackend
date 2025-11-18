@@ -45,4 +45,20 @@ class User extends Authenticatable
             'password' => 'hashed',
         ];
     }
+
+    /**
+     * Get all offload records created by this user.
+     */
+    public function offloadRecords()
+    {
+        return $this->hasMany(OffloadRecord::class);
+    }
+
+    /**
+     * Get all receiving batches created by this user.
+     */
+    public function receivingBatches()
+    {
+        return $this->hasMany(ReceivingBatch::class);
+    }
 }
