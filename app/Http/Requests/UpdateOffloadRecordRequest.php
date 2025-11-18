@@ -23,21 +23,20 @@ class UpdateOffloadRecordRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'date' => 'sometimes|date|before_or_equal:today',
-            'boatName' => 'sometimes|string|max:255',
-            'boatNumber' => 'sometimes|string|max:100',
-            'captainName' => 'sometimes|string|max:255',
-            'totalCrates' => 'sometimes|integer|min:1',
-            'totalKgAlive' => 'sometimes|numeric|min:0.01',
+           'boatName' => 'sometimes|string|max:255',
+            'offloadDate' => 'sometimes|date|before_or_equal:today',
+            'tripNumber' => 'sometimes|string|max:255',
+            'externalFactory' => 'sometimes|string|max:255',
+            'totalKgOffloaded' => 'sometimes|numeric|min:0',
+            'totalKgReceived' => 'sometimes|numeric|min:0',
+            'totalKgDead' => 'sometimes|numeric|min:0',
+            'totalKgRotten' => 'sometimes|numeric|min:0',
             'sizeU' => 'sometimes|numeric|min:0',
             'sizeA' => 'sometimes|numeric|min:0',
             'sizeB' => 'sometimes|numeric|min:0',
             'sizeC' => 'sometimes|numeric|min:0',
             'sizeD' => 'sometimes|numeric|min:0',
             'sizeE' => 'sometimes|numeric|min:0',
-            'deadOnTanks' => 'sometimes|numeric|min:0',
-            'rottenOnTanks' => 'sometimes|numeric|min:0',
-            'notes' => 'nullable|string|max:1000',
         ];
     }
 }

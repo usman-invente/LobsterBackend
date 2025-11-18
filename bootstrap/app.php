@@ -12,7 +12,12 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        //
+        $middleware->statefulApi();
+        
+        // Exclude API routes from CSRF protection (they use token-based auth instead)
+        $middleware->validateCsrfTokens(except: [
+            'api/*',
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

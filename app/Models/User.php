@@ -61,4 +61,17 @@ class User extends Authenticatable
     {
         return $this->hasMany(ReceivingBatch::class);
     }
+
+    /**
+     * Get all dispatches created by this user.
+     */
+    public function dispatches()
+    {
+        return $this->hasMany(Dispatch::class);
+    }
+
+     public function lossAdjustments()
+    {
+        return $this->hasMany(LossAdjustment::class);
+    }
 }

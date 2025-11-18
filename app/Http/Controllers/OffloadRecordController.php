@@ -1,11 +1,13 @@
 <?php
 
 namespace App\Http\Controllers;
+
 use App\Models\OffloadRecord;
 use Illuminate\Http\Request;
 use App\Http\Requests\StoreOffloadRecordRequest;
 use App\Http\Requests\UpdateOffloadRecordRequest;
 use Illuminate\Support\Facades\DB;
+
 class OffloadRecordController extends Controller
 {
     /**
@@ -18,30 +20,33 @@ class OffloadRecordController extends Controller
         try {
             $query = OffloadRecord::with('user:id,name,email');
 
-            // Filter by date range if provided
-            if ($request->has('start_date') && $request->has('end_date')) {
-                $query->dateRange($request->start_date, $request->end_date);
-            }
-
-            // Filter by boat number if provided
-            if ($request->has('boat_number')) {
-                $query->byBoat($request->boat_number);
+            // Search across multiple fields
+            if ($request->has('search') && !empty($request->search)) {
+                $searchTerm = $request->search;
+                $query->where(function ($q) use ($searchTerm) {
+                    $q->where('boatName', 'LIKE', "%{$searchTerm}%")
+                        ->orWhere('tripNumber', 'LIKE', "%{$searchTerm}%")
+                        ->orWhere('externalFactory', 'LIKE', "%{$searchTerm}%");
+                });
             }
 
             // Sorting
-            $sortBy = $request->get('sort_by', 'date');
-            $sortOrder = $request->get('sort_order', 'desc');
-            $query->orderBy($sortBy, $sortOrder);
+            $sortBy = $request->get('sort_by', 'offloadDate');
+            $sortDirection = $request->get('sort_direction', 'desc');
+            $query->orderBy($sortBy, $sortDirection);
 
             // Pagination
-            if ($request->has('per_page')) {
-                $records = $query->paginate($request->per_page);
-            } else {
-                $records = $query->latest()->get();
-            }
+            $perPage = $request->get('per_page', 10);
+            $records = $query->paginate($perPage);
 
             return response()->json([
-                'data' => $records,
+                'data' => $records->items(),
+                'meta' => [
+                    'total' => $records->total(),
+                    'current_page' => $records->currentPage(),
+                    'per_page' => $records->perPage(),
+                    'last_page' => $records->lastPage(),
+                ],
                 'message' => 'Offload records retrieved successfully',
             ], 200);
         } catch (\Exception $e) {
@@ -103,7 +108,6 @@ class OffloadRecordController extends Controller
                 'data' => $offloadRecord->load('user:id,name,email'),
                 'message' => 'Offload record retrieved successfully',
             ], 200);
-
         } catch (\Exception $e) {
             return response()->json([
                 'message' => 'Error retrieving offload record',
@@ -124,18 +128,20 @@ class OffloadRecordController extends Controller
         DB::beginTransaction();
         try {
             // If updating sizes, validate total
-            if ($request->has('totalKgAlive') || 
-                $request->hasAny(['sizeU', 'sizeA', 'sizeB', 'sizeC', 'sizeD', 'sizeE'])) {
-                
+            if (
+                $request->has('totalKgAlive') ||
+                $request->hasAny(['sizeU', 'sizeA', 'sizeB', 'sizeC', 'sizeD', 'sizeE'])
+            ) {
+
                 $totalKg = $request->get('totalKgAlive', $offloadRecord->totalKgAlive);
-                $sizeTotal = 
+                $sizeTotal =
                     $request->get('sizeU', $offloadRecord->sizeU) +
                     $request->get('sizeA', $offloadRecord->sizeA) +
                     $request->get('sizeB', $offloadRecord->sizeB) +
                     $request->get('sizeC', $offloadRecord->sizeC) +
                     $request->get('sizeD', $offloadRecord->sizeD) +
                     $request->get('sizeE', $offloadRecord->sizeE);
-                
+
                 if (abs($sizeTotal - $totalKg) > 0.01) {
                     return response()->json([
                         'message' => 'Validation failed',
@@ -156,7 +162,6 @@ class OffloadRecordController extends Controller
                 'message' => 'Offload record updated successfully',
                 'data' => $offloadRecord->load('user:id,name,email'),
             ], 200);
-
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json([
@@ -183,7 +188,6 @@ class OffloadRecordController extends Controller
             return response()->json([
                 'message' => 'Offload record deleted successfully',
             ], 200);
-
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json([
@@ -244,7 +248,6 @@ class OffloadRecordController extends Controller
                 'data' => $statistics,
                 'message' => 'Statistics retrieved successfully',
             ], 200);
-
         } catch (\Exception $e) {
             return response()->json([
                 'message' => 'Error retrieving statistics',
