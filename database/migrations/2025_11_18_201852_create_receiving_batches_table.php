@@ -29,7 +29,7 @@ return new class extends Migration
             $table->decimal('kg', 10, 2);
             $table->decimal('originalKg', 10, 2);
             $table->enum('originalSize', ['U', 'A', 'B', 'C', 'D', 'E']);
-            $table->enum('status', ['received', 'stored', 'dispatched'])->default('received');
+            $table->enum('status', ['received', 'stored', 'dispatched','rechecked','emptied'])->default('received');
             $table->foreignId('user_id')->constrained()->onDelete('cascade');
             $table->timestamps();
         });

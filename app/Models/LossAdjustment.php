@@ -9,7 +9,6 @@ class LossAdjustment extends Model
     protected $fillable = [
         'date',
         'tankId',
-        'tankNumber',
         'type',
         'size',
         'kg',

@@ -26,7 +26,7 @@ return [
 
     'exposed_headers' => ['X-CSRF-TOKEN'],
 
-    'max_age' => 0,
+    'max_age' => 3600,
 
     'supports_credentials' => true,
 

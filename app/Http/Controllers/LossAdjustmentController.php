@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\LossAdjustment;
 use App\Models\Tank;
+use App\Models\Crate;
+use App\Models\LooseStock;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
@@ -55,7 +57,7 @@ class LossAdjustmentController extends Controller
     {
         $validated = $request->validate([
             'date' => 'required|date|before_or_equal:today',
-            'tankNumber' => 'required|integer',
+            'tankId' => 'required|integer',
             'type' => 'required|in:dead,rotten,lost',
             'size' => 'required|in:U,A,B,C,D,E',
             'kg' => 'required|numeric|min:0.01|max:9999.99',
@@ -65,7 +67,7 @@ class LossAdjustmentController extends Controller
         DB::beginTransaction();
         try {
             // Validate that tank has sufficient stock
-            $tank = Tank::where('tankNumber', $validated['tankNumber'])->first();
+            $tank = Tank::where('id', $validated['tankId'])->first();
             
             if (!$tank) {
                 return response()->json([
@@ -74,13 +76,24 @@ class LossAdjustmentController extends Controller
             }
 
             // Check available stock for the specific size
-            $sizeField = 'size' . $validated['size'];
-            $availableStock = $tank->$sizeField ?? 0;
 
-            if ($availableStock < $validated['kg']) {
+
+        $size = $validated['size'];
+        $crateKg = Crate::where('tankId', $validated['tankId'])
+            ->where('size', $size)
+            ->whereIn('status', ['stored', 'received']) // adjust statuses as needed
+            ->sum('kg');
+
+        $looseKg = LooseStock::where('tankId', $validated['tankId'])
+            ->where('size', $size)
+            ->sum('kg');
+
+        $totalSizeStock = $crateKg + $looseKg;
+
+            if ($totalSizeStock < $validated['kg']) {
                 return response()->json([
                     'message' => 'Insufficient stock',
-                    'error' => "Tank {$validated['tankNumber']} has only {$availableStock} kg of size {$validated['size']} available, cannot adjust {$validated['kg']} kg",
+                    'error' => "Tank {$tank->tankName} has only {$totalSizeStock} kg of size {$validated['size']} available, cannot adjust {$validated['kg']} kg",
                 ], 400);
             }
 

@@ -58,4 +58,10 @@ class RegisterController extends BaseController
             'token' => $token,
         ]);
     }
+
+
+      public function me(Request $request)
+    {
+        return response()->json($request->user());
+    }
 }

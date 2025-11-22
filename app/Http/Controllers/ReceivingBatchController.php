@@ -29,26 +29,25 @@ class ReceivingBatchController extends Controller
         $validated = $request->validate([
             'date' => 'required|date',
             'batchNumber' => 'required|string|max:255|unique:receiving_batches,batchNumber',
-            'crates' => 'required|array|min:1',
-            'crates.*.boatName' => 'required|string|max:255',
-            'crates.*.offloadDate' => 'required|date',
-            'crates.*.crateNumber' => 'required|integer|unique:crates,crateNumber',
-            'crates.*.size' => 'required|in:U,A,B,C,D,E',
-            'crates.*.kg' => 'required|numeric|min:0.01|regex:/^\d+(\.\d{1,2})?$/',
+            'lineItems' => 'required|array|min:1',
+            'lineItems.*.boatName' => 'required|string|max:255',
+            'lineItems.*.offloadDate' => 'required|date',
+            'lineItems.*.crateNumber' => 'required|integer|unique:crates,crateNumber',
+            'lineItems.*.size' => 'required|in:U,A,B,C,D,E',
+            'lineItems.*.kg' => 'required|numeric|min:0|regex:/^\d+(\.\d{1,2})?$/',
         ], [
             'batchNumber.unique' => 'This batch number already exists.',
-            'crates.*.crateNumber.unique' => 'Crate number :input has already been registered.',
-            'crates.*.crateNumber.required' => 'Crate number is required for each crate.',
-            'crates.*.crateNumber.integer' => 'Crate number must be a valid number.',
-            'crates.*.boatName.required' => 'Boat name is required for each crate.',
-            'crates.*.offloadDate.required' => 'Offload date is required for each crate.',
-            'crates.*.offloadDate.date' => 'Offload date must be a valid date.',
-            'crates.*.size.required' => 'Size is required for each crate.',
-            'crates.*.size.in' => 'Size must be one of: U, A, B, C, D, E.',
-            'crates.*.kg.required' => 'Weight is required for each crate.',
-            'crates.*.kg.numeric' => 'Weight must be a valid number.',
-            'crates.*.kg.min' => 'Weight must be greater than 0.',
-            'crates.*.kg.regex' => 'Weight must have at most 2 decimal places.',
+            'lineItems.*.crateNumber.unique' => 'Crate number :input has already been registered.',
+            'lineItems.*.crateNumber.required' => 'Crate number is required for each line item.',
+            'lineItems.*.boatName.required' => 'Boat name is required for each line item.',
+            'lineItems.*.offloadDate.required' => 'Offload date is required for each line item.',
+            'lineItems.*.offloadDate.date' => 'Offload date must be a valid date.',
+            'lineItems.*.size.required' => 'Size is required for each line item.',
+            'lineItems.*.size.in' => 'Size must be one of: U, A, B, C, D, E.',
+            'lineItems.*.kg.required' => 'Weight is required for each line item.',
+            'lineItems.*.kg.numeric' => 'Weight must be a valid number.',
+            'lineItems.*.kg.min' => 'Weight must be greater than or equal to 0.',
+            'lineItems.*.kg.regex' => 'Weight must have at most 2 decimal places.',
             'date.required' => 'Batch date is required.',
             'date.date' => 'Batch date must be a valid date.',
         ]);
@@ -61,17 +60,17 @@ class ReceivingBatchController extends Controller
                 'batchNumber' => $validated['batchNumber'],
             ]);
 
-            // Create crates
+            // Create crates from line items
             $crates = [];
-            foreach ($validated['crates'] as $crateData) {
+            foreach ($validated['lineItems'] as $lineItem) {
                 $crate = $batch->crates()->create([
-                    'boatName' => $crateData['boatName'],
-                    'offloadDate' => $crateData['offloadDate'],
-                    'crateNumber' => $crateData['crateNumber'],
-                    'size' => $crateData['size'],
-                    'kg' => $crateData['kg'],
-                    'originalKg' => $crateData['kg'],
-                    'originalSize' => $crateData['size'],
+                    'boatName' => $lineItem['boatName'],
+                    'offloadDate' => $lineItem['offloadDate'],
+                    'crateNumber' => $lineItem['crateNumber'],
+                    'size' => $lineItem['size'],
+                    'kg' => $lineItem['kg'],
+                    'originalKg' => $lineItem['kg'],
+                    'originalSize' => $lineItem['size'],
                     'status' => 'received',
                     'user_id' => $request->user()->id,
                 ]);

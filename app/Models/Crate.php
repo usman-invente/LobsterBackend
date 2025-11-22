@@ -16,6 +16,22 @@ class Crate extends Model
         'originalKg',
         'originalSize',
         'status',
+        'tankId',
         'user_id',
     ];
+
+     public function receivingBatch()
+    {
+        return $this->belongsTo(ReceivingBatch::class);
+    }
+
+    /**
+     * Get the user that created this crate.
+     */
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
+
+    
 }

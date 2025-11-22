@@ -37,12 +37,11 @@ class RegisterController extends BaseController
       public function login(Request $request)
     {
         $request->validate([
-            'email' => 'required|email',
+            'username' => 'required|email',
             'password' => 'required',
         ]);
 
-        $user = User::where('email', $request->email)->first();
-
+        $user = User::where('email', $request->username)->first();
         if (!$user || !Hash::check($request->password, $user->password)) {
             throw ValidationException::withMessages([
                 'email' => ['The provided credentials are incorrect.'],
@@ -57,5 +56,13 @@ class RegisterController extends BaseController
             'user' => $user,
             'token' => $token,
         ]);
+    }
+
+     public function logout(Request $request)
+    {
+        // Revoke the token that was used to authenticate the current request
+        $request->user()->currentAccessToken()->delete();
+
+        return response()->json(['message' => 'Logged out successfully']);
     }
 }
