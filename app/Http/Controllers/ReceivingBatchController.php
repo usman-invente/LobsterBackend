@@ -7,16 +7,22 @@ use App\Models\ReceivingBatch;
 use App\Models\Crate;
 
 use Illuminate\Support\Facades\DB;
+
 class ReceivingBatchController extends Controller
 {
     /**
      * Display a listing of receiving batches.
      */
-    public function index()
+    public function index(Request $request)
     {
-        $batches = ReceivingBatch::with(['crates', 'user'])
-            ->latest()
-            ->get();
+        $query = ReceivingBatch::with(['crates', 'user']);
+
+        // Add search filter for batch number
+        if ($request->has('search') && !empty($request->search)) {
+            $query->where('batchNumber', 'like', '%' . $request->search . '%');
+        }
+
+        $batches = $query->latest()->get();
 
         return response()->json(['data' => $batches]);
     }
@@ -83,7 +89,6 @@ class ReceivingBatchController extends Controller
                 'message' => 'Receiving batch created successfully',
                 'data' => $batch->load('crates'),
             ], 201);
-
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json([
@@ -93,7 +98,7 @@ class ReceivingBatchController extends Controller
         }
     }
 
-     /**
+    /**
      * Display the specified receiving batch.
      */
     public function show(ReceivingBatch $receivingBatch)
@@ -103,7 +108,7 @@ class ReceivingBatchController extends Controller
         ]);
     }
 
-     /**
+    /**
      * Update the specified receiving batch.
      */
     public function update(Request $request, ReceivingBatch $receivingBatch)

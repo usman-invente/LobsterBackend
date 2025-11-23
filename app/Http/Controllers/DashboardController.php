@@ -25,6 +25,22 @@ class DashboardController extends Controller
 
         // Total stock = crates + loose - losses
         $totalStock = $cratesKg + $looseStockKg - $lossesKg;
+
+        // Size breakdown with all sizes initialized to 0
+        $sizeBreakdown = [
+            'U' => 0,
+            'A' => 0,
+            'B' => 0,
+            'C' => 0,
+            'D' => 0,
+            'E' => 0,
+        ];
+        $existingSizes = \App\Models\Crate::selectRaw('size, sum(kg) as total_kg')
+            ->groupBy('size')
+            ->pluck('total_kg', 'size')
+            ->toArray();
+        $sizeBreakdown = array_merge($sizeBreakdown, $existingSizes);
+
         return response()->json([
             'total_stock_kg' => $totalStock,
             'total_crates' => Crate::count(),
@@ -56,7 +72,7 @@ class DashboardController extends Controller
                         'looseStock' => $looseStock,
                     ];
                 }),
-
+                  'size_breakdown' => $sizeBreakdown,
             // Add more stats as needed
         ]);
     }

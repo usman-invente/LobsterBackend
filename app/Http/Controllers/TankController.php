@@ -4,34 +4,69 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Tank;
+use Illuminate\Validation\Rule;
 
 class TankController extends Controller
 {
     public function index(Request $request)
     {
-        $tanks = \App\Models\Tank::where('status', 1)
-            ->withCount('crates')
-            ->with([
-                'crates', // assumes Tank hasMany Crate
-                'looseStock' // assumes Tank hasMany LooseStock
-            ])
-            ->orderBy('tankName')
-            ->get();
+        $query = Tank::query();
 
-        // Map/append calculated fields for each tank
-        $tanks = $tanks->map(function ($tank) {
-            // Total weight from crates and loose stock
-            $totalWeight = 0;
-            $sizeWeights = [
-                'U' => 0,
-                'A' => 0,
-                'B' => 0,
-                'C' => 0,
-                'D' => 0,
-                'E' => 0
+        // Handle search functionality
+        if ($request->has('search') && !empty($request->search)) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('tankNumber', 'LIKE', "%{$search}%")
+                    ->orWhere('tankName', 'LIKE', "%{$search}%");
+            });
+        }
+
+        // If ?page parameter is present, show all tanks; otherwise, only status 1
+        if (!$request->has('page')) {
+            $query->where('status', 1);
+        }
+
+        // Handle sorting
+        if ($request->has('sort_by') && !empty($request->sort_by)) {
+            $sortBy = $request->sort_by;
+            $sortDirection = $request->sort_direction ?? 'asc';
+
+            // Map frontend column names to database columns
+            $columnMapping = [
+                'number' => 'tankNumber',
+                'name' => 'tankName',
+                'status' => 'status'
             ];
 
-            // Crates
+            if (isset($columnMapping[$sortBy])) {
+                $query->orderBy($columnMapping[$sortBy], $sortDirection);
+            } else {
+                $query->orderBy('tankName'); // Default sorting
+            }
+        } else {
+            $query->orderBy('tankName'); // Default sorting
+        }
+
+        // Handle pagination
+        if ($request->has('per_page')) {
+            $perPage = $request->per_page;
+            $tanks = $query
+                ->withCount('crates')
+                ->with(['crates', 'looseStock'])
+                ->paginate($perPage);
+        } else {
+            // If no pagination requested, get all results
+            $tanks = $query
+                ->withCount('crates')
+                ->with(['crates', 'looseStock'])
+                ->get();
+        }
+
+        // Map/append calculated fields for each tank
+        $tanksData = $tanks->map(function ($tank) {
+            $totalWeight = 0;
+            $sizeWeights = ['U' => 0, 'A' => 0, 'B' => 0, 'C' => 0, 'D' => 0, 'E' => 0];
+
             foreach ($tank->crates as $crate) {
                 $totalWeight += $crate->kg;
                 if (isset($sizeWeights[$crate->size])) {
@@ -39,7 +74,6 @@ class TankController extends Controller
                 }
             }
 
-            // Loose Stock
             $looseCount = 0;
             foreach ($tank->looseStock as $loose) {
                 $totalWeight += $loose->kg;
@@ -49,7 +83,6 @@ class TankController extends Controller
                 }
             }
 
-            // Attach calculated fields
             $tank->totalWeight = $totalWeight;
             $tank->loose_count = $looseCount;
             foreach ($sizeWeights as $size => $weight) {
@@ -59,18 +92,105 @@ class TankController extends Controller
             return $tank;
         });
 
+        // Return paginated response if pagination was used
+        if ($request->has('per_page')) {
+            return response()->json([
+                'data' => $tanksData,
+                'meta' => [
+                    'total' => $tanks->total(),
+                    'per_page' => $tanks->perPage(),
+                    'current_page' => $tanks->currentPage(),
+                    'last_page' => $tanks->lastPage(),
+                    'from' => $tanks->firstItem(),
+                    'to' => $tanks->lastItem()
+                ]
+            ]);
+        }
+
+        // Return regular response for non-paginated requests
         return response()->json([
-            'data' => $tanks
+            'data' => $tanksData
         ]);
     }
 
-    public function crates($tankId)
+    /**
+     * Store a newly created tank.
+     */
+    public function store(Request $request)
     {
-        $tank = Tank::with('crates')->findOrFail($tankId);
+        $request->validate([
+            'number' => 'required|integer|min:1|unique:tanks,tankNumber',
+            'name' => 'required|string|max:255|unique:tanks,tankName',
+        ]);
 
-        // Optionally, you can transform the crates if needed
+        $tank = Tank::create([
+            'tankNumber' => $request->number,
+            'tankName' => $request->name,
+            'status' => 1, // Active by default
+        ]);
+
         return response()->json([
-            'data' => $tank->crates
+            'message' => 'Tank created successfully',
+            'data' => $tank
+        ], 201);
+    }
+
+    /**
+     * Display the specified tank.
+     */
+    public function show(Tank $tank)
+    {
+        return response()->json(['data' => $tank]);
+    }
+
+    /**
+     * Update the specified tank.
+     */
+    public function update(Request $request, Tank $tank)
+    {
+        $request->validate([
+            'number' => ['required', 'integer', 'min:1', Rule::unique('tanks', 'tankNumber')->ignore($tank->id)],
+            'name' => ['required', 'string', 'max:255', Rule::unique('tanks', 'tankName')->ignore($tank->id)],
+            'active' => 'boolean',
+        ]);
+
+        $tank->update([
+            'tankNumber' => $request->number,
+            'tankName' => $request->name,
+            'status' => $request->active ? 1 : 0,
+        ]);
+
+        return response()->json([
+            'message' => 'Tank updated successfully',
+            'data' => $tank
+        ]);
+    }
+
+    /**
+     * Remove the specified tank.
+     */
+    public function destroy(Tank $tank)
+    {
+        // Check if tank has any associated records before deleting
+        // You might want to add this validation based on your business logic
+
+        $tank->delete();
+
+        return response()->json([
+            'message' => 'Tank deleted successfully'
+        ]);
+    }
+
+    /**
+     * Toggle tank active status.
+     */
+    public function toggleStatus(Tank $tank)
+    {
+        $tank->update(['status' => !$tank->active]);
+
+        return response()->json([
+            'message' => 'Tank status updated successfully',
+            'data' => $tank
         ]);
     }
 }

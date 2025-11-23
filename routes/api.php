@@ -44,7 +44,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('receiving-batches', ReceivingBatchController::class);
     Route::get('/crates', [CrateController::class, 'index']);
     Route::put('/crates/{id}', [CrateController::class, 'update']);
-    Route::get('/tanks', [TankController::class, 'index']);
+    Route::apiResource('tanks', TankController::class);
+    Route::patch('tanks/{tank}/toggle', [TankController::class, 'toggleStatus']);
     // 3. Create loose stock
     Route::post('/loose-stock', [LooseStockController::class, 'store']);
     // Crates
