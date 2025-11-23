@@ -13,6 +13,7 @@ class LossAdjustment extends Model
         'size',
         'kg',
         'reason',
+        'crateId',
         'user_id',
     ];
 
@@ -94,5 +95,15 @@ class LossAdjustment extends Model
             return 0;
         }
         return round(($this->kg / $totalStock) * 100, 2);
+    }
+
+    public function tank()
+    {
+        return $this->belongsTo(\App\Models\Tank::class, 'tankId');
+    }
+
+    public function crate()
+    {
+        return $this->belongsTo(\App\Models\Crate::class, 'crateId');
     }
 }

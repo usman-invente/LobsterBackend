@@ -20,7 +20,11 @@ class LossAdjustmentController extends Controller
      */
     public function index(Request $request)
     {
-        $query = LossAdjustment::with('user:id,name,email');
+        $query = LossAdjustment::with([
+            'user:id,name,email',
+            'tank:id,tankName,tankNumber', // assuming relation is named 'tank'
+            'crate:id,crateNumber,size,kg,tankId' // assuming relation is named 'crate'
+        ]);
 
         // Filter by date range
         if ($request->has('start_date') && $request->has('end_date')) {
@@ -55,6 +59,7 @@ class LossAdjustmentController extends Controller
      */
     public function store(Request $request)
     {
+
         $validated = $request->validate([
             'date' => 'required|date|before_or_equal:today',
             'tankId' => 'required|integer',
@@ -62,13 +67,14 @@ class LossAdjustmentController extends Controller
             'size' => 'required|in:U,A,B,C,D,E',
             'kg' => 'required|numeric|min:0.01|max:9999.99',
             'reason' => 'nullable|string|max:500',
+            'crateId' => 'required|integer',
         ]);
 
         DB::beginTransaction();
         try {
             // Validate that tank has sufficient stock
             $tank = Tank::where('id', $validated['tankId'])->first();
-            
+
             if (!$tank) {
                 return response()->json([
                     'message' => 'Tank not found',
@@ -78,17 +84,17 @@ class LossAdjustmentController extends Controller
             // Check available stock for the specific size
 
 
-        $size = $validated['size'];
-        $crateKg = Crate::where('tankId', $validated['tankId'])
-            ->where('size', $size)
-            ->whereIn('status', ['stored', 'received']) // adjust statuses as needed
-            ->sum('kg');
+            $size = $validated['size'];
+            $crateKg = Crate::where('tankId', $validated['tankId'])
+                ->where('size', $size)
+                ->whereIn('status', ['stored', 'received']) // adjust statuses as needed
+                ->sum('kg');
 
-        $looseKg = LooseStock::where('tankId', $validated['tankId'])
-            ->where('size', $size)
-            ->sum('kg');
+            $looseKg = LooseStock::where('tankId', $validated['tankId'])
+                ->where('size', $size)
+                ->sum('kg');
 
-        $totalSizeStock = $crateKg + $looseKg;
+            $totalSizeStock = $crateKg + $looseKg;
 
             if ($totalSizeStock < $validated['kg']) {
                 return response()->json([
@@ -101,8 +107,8 @@ class LossAdjustmentController extends Controller
             $lossAdjustment = $request->user()->lossAdjustments()->create($validated);
 
             // Deduct from tank inventory
-            $tank->decrement($sizeField, $validated['kg']);
-            $tank->decrement('totalKg', $validated['kg']);
+            // $tank->decrement($sizeField, $validated['kg']);
+            // $tank->decrement('totalKg', $validated['kg']);
 
             DB::commit();
 
@@ -110,7 +116,6 @@ class LossAdjustmentController extends Controller
                 'message' => 'Loss adjustment created successfully',
                 'data' => $lossAdjustment->load('user:id,name,email'),
             ], 201);
-
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json([
@@ -145,41 +150,104 @@ class LossAdjustmentController extends Controller
         $validated = $request->validate([
             'date' => 'sometimes|date|before_or_equal:today',
             'tankId' => 'sometimes|integer',
-            'tankNumber' => 'sometimes|integer',
             'type' => 'sometimes|in:dead,rotten,lost',
             'size' => 'sometimes|in:U,A,B,C,D,E',
             'kg' => 'sometimes|numeric|min:0.01|max:9999.99',
             'reason' => 'nullable|string|max:500',
+            'crateId' => 'sometimes|integer',
         ]);
 
         DB::beginTransaction();
         try {
             // If kg or size changed, revert old adjustment and apply new one
-            if (isset($validated['kg']) || isset($validated['size'])) {
-                $tank = Tank::where('tankNumber', $lossAdjustment->tankNumber)->first();
-                
+            if (isset($validated['kg']) || isset($validated['size']) || isset($validated['crateId']) || isset($validated['tankId'])) {
                 // Revert old adjustment
-                $oldSizeField = 'size' . $lossAdjustment->size;
-                $tank->increment($oldSizeField, $lossAdjustment->kg);
-                $tank->increment('totalKg', $lossAdjustment->kg);
+                $oldTankId = $lossAdjustment->tankId;
+                $oldSize = $lossAdjustment->size;
+                $oldKg = $lossAdjustment->kg;
+                $oldCrateId = $lossAdjustment->crateId;
+
+                // Restore old crate if applicable
+                if ($oldCrateId) {
+                    $oldCrate = Crate::find($oldCrateId);
+                    if ($oldCrate) {
+                        $oldCrate->kg += $oldKg;
+                        $oldCrate->save();
+                    }
+                } else {
+                    // Restore to loose stock if not crate-based
+                    $oldLoose = LooseStock::where('tankId', $oldTankId)->where('size', $oldSize)->first();
+                    if ($oldLoose) {
+                        $oldLoose->kg += $oldKg;
+                        $oldLoose->save();
+                    }
+                }
+
+                // Restore tank summary
+                $oldTank = Tank::find($oldTankId);
+                if ($oldTank) {
+                    $oldTank->increment('size' . $oldSize, $oldKg);
+                    $oldTank->increment('totalKg', $oldKg);
+                }
 
                 // Apply new adjustment
+                $newTankId = $validated['tankId'] ?? $lossAdjustment->tankId;
                 $newSize = $validated['size'] ?? $lossAdjustment->size;
                 $newKg = $validated['kg'] ?? $lossAdjustment->kg;
-                $newSizeField = 'size' . $newSize;
+                $newCrateId = $validated['crateId'] ?? $lossAdjustment->crateId;
 
-                // Validate new adjustment
-                $availableStock = $tank->$newSizeField ?? 0;
-                if ($availableStock < $newKg) {
+                // Check available stock
+                $crateKg = Crate::where('tankId', $newTankId)
+                    ->where('size', $newSize)
+                    ->whereIn('status', ['stored', 'received'])
+                    ->sum('kg');
+                $looseKg = LooseStock::where('tankId', $newTankId)
+                    ->where('size', $newSize)
+                    ->sum('kg');
+                $totalSizeStock = $crateKg + $looseKg;
+
+                if ($totalSizeStock < $newKg) {
                     DB::rollBack();
                     return response()->json([
                         'message' => 'Insufficient stock for updated adjustment',
-                        'error' => "Tank {$lossAdjustment->tankNumber} has only {$availableStock} kg of size {$newSize} available",
+                        'error' => "Tank has only {$totalSizeStock} kg of size {$newSize} available",
                     ], 400);
                 }
 
-                $tank->decrement($newSizeField, $newKg);
-                $tank->decrement('totalKg', $newKg);
+                // Deduct from crate or loose stock
+                if ($newCrateId) {
+                    $crate = Crate::find($newCrateId);
+                    if ($crate && $crate->kg >= $newKg) {
+                        $crate->kg -= $newKg;
+                        $crate->save();
+                    } else {
+                        DB::rollBack();
+                        return response()->json([
+                            'message' => 'Insufficient crate stock',
+                            'error' => "Crate does not have enough kg",
+                        ], 400);
+                    }
+                } else {
+                    // Deduct from loose stock
+                    $loose = LooseStock::where('tankId', $newTankId)->where('size', $newSize)->first();
+                    if ($loose && $loose->kg >= $newKg) {
+                        $loose->kg -= $newKg;
+                        $loose->save();
+                    } else {
+                        DB::rollBack();
+                        return response()->json([
+                            'message' => 'Insufficient loose stock',
+                            'error' => "Loose stock does not have enough kg",
+                        ], 400);
+                    }
+                }
+
+                // Deduct from tank summary
+                $newTank = Tank::find($newTankId);
+                if ($newTank) {
+                    $newTank->decrement('size' . $newSize, $newKg);
+                    $newTank->decrement('totalKg', $newKg);
+                }
             }
 
             $lossAdjustment->update($validated);
@@ -190,7 +258,6 @@ class LossAdjustmentController extends Controller
                 'message' => 'Loss adjustment updated successfully',
                 'data' => $lossAdjustment->load('user:id,name,email'),
             ], 200);
-
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json([
@@ -199,7 +266,6 @@ class LossAdjustmentController extends Controller
             ], 500);
         }
     }
-
     /**
      * Remove the specified loss adjustment.
      *
@@ -212,7 +278,7 @@ class LossAdjustmentController extends Controller
         try {
             // Restore stock when deleting adjustment
             $tank = Tank::where('tankNumber', $lossAdjustment->tankNumber)->first();
-            
+
             if ($tank) {
                 $sizeField = 'size' . $lossAdjustment->size;
                 $tank->increment($sizeField, $lossAdjustment->kg);
@@ -226,7 +292,6 @@ class LossAdjustmentController extends Controller
             return response()->json([
                 'message' => 'Loss adjustment deleted successfully',
             ], 200);
-
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json([
@@ -330,7 +395,6 @@ class LossAdjustmentController extends Controller
             return response()->json([
                 'data' => $summary,
             ], 200);
-
         } catch (\Exception $e) {
             return response()->json([
                 'message' => 'Error retrieving loss summary',
@@ -400,7 +464,6 @@ class LossAdjustmentController extends Controller
                     'peakLossDays' => $peakLossDays,
                 ],
             ], 200);
-
         } catch (\Exception $e) {
             return response()->json([
                 'message' => 'Error retrieving loss trends',
@@ -477,7 +540,6 @@ class LossAdjustmentController extends Controller
             return response()->json([
                 'data' => $summary,
             ], 200);
-
         } catch (\Exception $e) {
             return response()->json([
                 'message' => 'Error retrieving tank loss summary',
