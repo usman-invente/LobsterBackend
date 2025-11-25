@@ -17,7 +17,7 @@ return new class extends Migration
             $table->string('tankId');
             $table->integer('tankNumber');
             $table->enum('type', ['dead', 'rotten', 'lost']);
-            $table->enum('size', ['U', 'A', 'B', 'C', 'D', 'E']);
+            $table->enum('size', ['U', 'A', 'B', 'C', 'D', 'E', 'M']);
             $table->decimal('kg', 10, 2);
             $table->text('reason')->nullable();
             $table->foreignId('user_id')->constrained()->onDelete('cascade');

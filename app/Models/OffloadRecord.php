@@ -21,6 +21,7 @@ class OffloadRecord extends Model
         'sizeB',
         'sizeC',
         'sizeD',
+        'sizeM',
         'sizeE',
         'user_id',
     ];
@@ -37,6 +38,7 @@ class OffloadRecord extends Model
         'sizeC' => 'decimal:2',
         'sizeD' => 'decimal:2',
         'sizeE' => 'decimal:2',
+        'sizeM' => 'decimal:2',
     ];
 
     /**

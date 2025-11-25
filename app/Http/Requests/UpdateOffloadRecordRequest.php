@@ -11,7 +11,7 @@ class UpdateOffloadRecordRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        
+
         return true;
     }
 
@@ -23,21 +23,22 @@ class UpdateOffloadRecordRequest extends FormRequest
     public function rules(): array
     {
         return [
-           'boatName' => 'sometimes|string|max:255',
-            'offloadDate' => 'sometimes|date|before_or_equal:today',
-            'tripNumber' => 'sometimes|string|max:255',
-            'externalFactory' => 'sometimes|string|max:255',
-            'totalKgOffloaded' => 'sometimes|numeric|min:0',
-            'totalLive' => 'sometimes|numeric|min:0',
-            'totalKgReceived' => 'sometimes|numeric|min:0',
-            'totalKgDead' => 'sometimes|numeric|min:0',
-            'totalKgRotten' => 'sometimes|numeric|min:0',
-            'sizeU' => 'sometimes|numeric|min:0',
-            'sizeA' => 'sometimes|numeric|min:0',
-            'sizeB' => 'sometimes|numeric|min:0',
-            'sizeC' => 'sometimes|numeric|min:0',
-            'sizeD' => 'sometimes|numeric|min:0',
-            'sizeE' => 'sometimes|numeric|min:0',
+            'boatName' => 'required|string|max:255',
+            'offloadDate' => 'required|date',
+            'tripNumber' => 'required|string|max:255',
+            'externalFactory' => 'required|string|max:255',
+            'totalKgOffloaded' => 'required|numeric|min:0.01',
+            'totalKgReceived' => 'required|numeric|min:0.01',
+            'totalKgDead' => 'nullable|numeric|min:0',
+            'totalKgRotten' => 'nullable|numeric|min:0',
+            'totalLive' => 'nullable|numeric|min:0',
+            'sizeU' => 'nullable|numeric|min:0',
+            'sizeA' => 'nullable|numeric|min:0',
+            'sizeB' => 'nullable|numeric|min:0',
+            'sizeC' => 'nullable|numeric|min:0',
+            'sizeD' => 'nullable|numeric|min:0',
+            'sizeE' => 'nullable|numeric|min:0',
+            'sizeM' => 'nullable|numeric|min:0',
         ];
     }
 }

@@ -39,7 +39,7 @@ class CrateController extends Controller
         
         $validated = $request->validate([
             'kg' => 'sometimes|numeric|min:0',
-            'size' => 'sometimes|in:U,A,B,C,D,E',
+            'size' => 'sometimes|in:U,A,B,C,D,E,M',
             'status' => 'sometimes|in:received,rechecked,stored,emptied,dispatched',
             'tankId' => 'sometimes|exists:tanks,id',
         ]);

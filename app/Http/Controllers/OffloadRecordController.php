@@ -64,7 +64,7 @@ class OffloadRecordController extends Controller
         try {
             // Validate that size breakdown matches total
             $sizeTotal = $request->sizeU + $request->sizeA + $request->sizeB +
-                $request->sizeC + $request->sizeD + $request->sizeE;
+                $request->sizeC + $request->sizeD + $request->sizeE + $request->sizeM;
 
             if (abs($sizeTotal - $request->totalKgAlive) > 0.01) {
                 return response()->json([
@@ -140,7 +140,8 @@ class OffloadRecordController extends Controller
                     $request->get('sizeB', $offloadRecord->sizeB) +
                     $request->get('sizeC', $offloadRecord->sizeC) +
                     $request->get('sizeD', $offloadRecord->sizeD) +
-                    $request->get('sizeE', $offloadRecord->sizeE);
+                    $request->get('sizeE', $offloadRecord->sizeE)
+                    + $request->get('sizeM', $offloadRecord->sizeM);
 
                 if (abs($sizeTotal - $totalKg) > 0.01) {
                     return response()->json([
@@ -230,6 +231,7 @@ class OffloadRecordController extends Controller
                     'C' => $records->sum('sizeC'),
                     'D' => $records->sum('sizeD'),
                     'E' => $records->sum('sizeE'),
+                    'M' => $records->sum('sizeM'),
                 ],
                 'averagePerRecord' => [
                     'crates' => $records->count() > 0 ? $records->avg('totalCrates') : 0,

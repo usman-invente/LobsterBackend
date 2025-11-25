@@ -23,24 +23,25 @@ class StoreOffloadRecordRequest extends FormRequest
     {
         return [
             'boatName' => 'required|string|max:255',
-            'offloadDate' => 'required|date_format:Y-m-d|before_or_equal:today',
+            'offloadDate' => 'required|date',
             'tripNumber' => 'required|string|max:255',
             'externalFactory' => 'required|string|max:255',
-            'totalKgOffloaded' => 'required|numeric|min:0',
-            'totalKgReceived' => 'required|numeric|min:0',
-            'totalLive' => 'required|numeric|min:0',
-            'totalKgDead' => 'required|numeric|min:0',
-            'totalKgRotten' => 'required|numeric|min:0',
-            'sizeU' => 'required|numeric|min:0',
-            'sizeA' => 'required|numeric|min:0',
-            'sizeB' => 'required|numeric|min:0',
-            'sizeC' => 'required|numeric|min:0',
-            'sizeD' => 'required|numeric|min:0',
-            'sizeE' => 'required|numeric|min:0',
+            'totalKgOffloaded' => 'required|numeric|min:0.01',
+            'totalKgReceived' => 'required|numeric|min:0.01',
+            'totalKgDead' => 'nullable|numeric|min:0',
+            'totalKgRotten' => 'nullable|numeric|min:0',
+            'totalLive' => 'nullable|numeric|min:0',
+            'sizeU' => 'nullable|numeric|min:0',
+            'sizeA' => 'nullable|numeric|min:0',
+            'sizeB' => 'nullable|numeric|min:0',
+            'sizeC' => 'nullable|numeric|min:0',
+            'sizeD' => 'nullable|numeric|min:0',
+            'sizeE' => 'nullable|numeric|min:0',
+            'sizeM' => 'nullable|numeric|min:0',
         ];
     }
 
-     /**
+    /**
      * Get custom messages for validator errors.
      *
      * @return array<string, string>

@@ -25,10 +25,10 @@ return new class extends Migration
             $table->string('boatName');
             $table->date('offloadDate');
             $table->integer('crateNumber')->unique();
-            $table->enum('size', ['U', 'A', 'B', 'C', 'D', 'E']);
+            $table->enum('size', ['U', 'A', 'B', 'C', 'D', 'E', 'M']);
             $table->decimal('kg', 10, 2);
             $table->decimal('originalKg', 10, 2);
-            $table->enum('originalSize', ['U', 'A', 'B', 'C', 'D', 'E']);
+            $table->enum('originalSize', ['U', 'A', 'B', 'C', 'D', 'E', 'M']);
             $table->enum('status', ['received', 'stored', 'dispatched','rechecked','emptied'])->default('received');
             $table->foreignId('user_id')->constrained()->onDelete('cascade');
             $table->timestamps();

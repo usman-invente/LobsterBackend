@@ -27,6 +27,7 @@ return new class extends Migration
             $table->decimal('sizeC', 10, 2)->default(0);
             $table->decimal('sizeD', 10, 2)->default(0);
             $table->decimal('sizeE', 10, 2)->default(0);
+            $table->decimal('sizeM', 10, 2)->default(0);
             $table->foreignId('user_id')->constrained()->onDelete('cascade');
             $table->timestamps();
 
