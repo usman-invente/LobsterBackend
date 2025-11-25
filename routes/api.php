@@ -79,6 +79,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('loss-adjustments-summary', [LossAdjustmentController::class, 'summary']);
     Route::get('loss-adjustments-trends', [LossAdjustmentController::class, 'trends']);
     Route::get('loss-adjustments-by-tank/{tankNumber}', [LossAdjustmentController::class, 'byTank']);
+    Route::get('/tank-stock', [TankController::class, 'getTankStock']);
 
 
 });

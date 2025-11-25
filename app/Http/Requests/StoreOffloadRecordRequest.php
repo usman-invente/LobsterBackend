@@ -28,6 +28,7 @@ class StoreOffloadRecordRequest extends FormRequest
             'externalFactory' => 'required|string|max:255',
             'totalKgOffloaded' => 'required|numeric|min:0',
             'totalKgReceived' => 'required|numeric|min:0',
+            'totalLive' => 'required|numeric|min:0',
             'totalKgDead' => 'required|numeric|min:0',
             'totalKgRotten' => 'required|numeric|min:0',
             'sizeU' => 'required|numeric|min:0',

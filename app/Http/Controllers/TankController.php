@@ -5,7 +5,8 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\Tank;
 use Illuminate\Validation\Rule;
-
+use App\Models\Crate;
+use App\Models\LooseStock;
 class TankController extends Controller
 {
     public function index(Request $request)
@@ -191,6 +192,67 @@ class TankController extends Controller
         return response()->json([
             'message' => 'Tank status updated successfully',
             'data' => $tank
+        ]);
+    }
+
+     public function getTankStock()
+    {
+        $tanks = Tank::where('status', 1) // Only active tanks
+            ->orderBy('tankName')
+            ->get()
+            ->map(function ($tank) {
+                // Get crates stored in this tank
+                $crates = Crate::where('tankId', $tank->id)
+                    ->where('status', 'stored')
+                    ->get()
+                    ->map(function ($crate) {
+                        return [
+                            'id' => $crate->id,
+                            'crateNumber' => $crate->crateNumber,
+                            'size' => $crate->size,
+                            'kg' => $crate->kg,
+                        ];
+                    });
+
+                // Get loose stock in this tank
+                $looseStock = LooseStock::where('tankId', $tank->id)
+                    ->where('status', 'stored')
+                    ->get()
+                    ->map(function ($stock) {
+                        return [
+                            'id' => $stock->id,
+                            'size' => $stock->size,
+                            'kg' => $stock->kg,
+                        ];
+                    });
+
+                // Calculate total kg for summary
+                $totalKg = $crates->sum('kg') + $looseStock->sum('kg');
+
+                return [
+                    'tankId' => $tank->id,
+                    'tankName' => $tank->tankName,
+                    'tankNumber' => $tank->tankNumber,
+                    'summary' => [
+                        'totalKg' => $totalKg,
+                    ],
+                    'crates' => $crates,
+                    'looseStock' => $looseStock,
+                ];
+            });
+
+        return response()->json([
+            'data' => $tanks,
+        ]);
+    }
+
+    public function crates($tankId)
+    {
+        $tank = Tank::with('crates')->findOrFail($tankId);
+
+        // Optionally, you can transform the crates if needed
+        return response()->json([
+            'data' => $tank->crates
         ]);
     }
 }

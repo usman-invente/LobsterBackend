@@ -15,6 +15,7 @@ class OffloadRecord extends Model
         'totalKgReceived',
         'totalKgDead',
         'totalKgRotten',
+        'totalLive',
         'sizeU',
         'sizeA',
         'sizeB',

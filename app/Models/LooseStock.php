@@ -10,6 +10,7 @@ class LooseStock extends Model
         'tankId',
         'size',
         'kg',
+        'status',
         'fromCrateId',
         'boatName',
         'offloadDate',

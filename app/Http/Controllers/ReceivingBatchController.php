@@ -116,9 +116,55 @@ class ReceivingBatchController extends Controller
         $validated = $request->validate([
             'date' => 'sometimes|date',
             'batchNumber' => 'sometimes|string|max:255|unique:receiving_batches,batchNumber,' . $receivingBatch->id,
+            'lineItems' => 'required|array|min:1',
+            'lineItems.*.boatName' => 'required|string|max:255',
+            'lineItems.*.offloadDate' => 'required|date',
+            'lineItems.*.crateNumber' => 'required|integer|min:1|max:300',
+            'lineItems.*.size' => 'required|in:U,A,B,C,D,E',
+            'lineItems.*.kg' => 'required|numeric|min:0.01',
         ]);
 
-        $receivingBatch->update($validated);
+        // Update the batch basic info
+        $receivingBatch->update([
+            'date' => $validated['date'] ?? $receivingBatch->date,
+            'batchNumber' => $validated['batchNumber'] ?? $receivingBatch->batchNumber,
+        ]);
+
+        // Get IDs of items being sent (existing items only)
+        $sentItemIds = collect($request->lineItems)->pluck('id')->filter()->values()->toArray();
+
+        // Delete crates that are no longer in the list (removed by user)
+        $receivingBatch->crates()->whereNotIn('id', $sentItemIds)->delete();
+
+        // Process each line item
+        foreach ($request->lineItems as $item) {
+            if (isset($item['id']) && $item['id']) {
+                // Update existing crate
+                $crate = $receivingBatch->crates()->find($item['id']);
+                if ($crate) {
+                    $crate->update([
+                        'boatName' => $item['boatName'],
+                        'offloadDate' => $item['offloadDate'],
+                        'crateNumber' => $item['crateNumber'],
+                        'size' => $item['size'],
+                        'kg' => $item['kg'],
+                    ]);
+                }
+            } else {
+                // Create new crate
+                $receivingBatch->crates()->create([
+                    'boatName' => $item['boatName'],
+                    'offloadDate' => $item['offloadDate'],
+                    'crateNumber' => $item['crateNumber'],
+                    'size' => $item['size'],
+                    'kg' => $item['kg'],
+                    'originalSize' => $item['size'],  // Add this
+                    'originalKg' => $item['kg'],      // Add this
+                    'status' => 'received',
+                    'user_id' => $request->user()->id,
+                ]);
+            }
+        }
 
         return response()->json([
             'message' => 'Receiving batch updated successfully',

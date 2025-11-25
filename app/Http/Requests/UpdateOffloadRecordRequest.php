@@ -28,6 +28,7 @@ class UpdateOffloadRecordRequest extends FormRequest
             'tripNumber' => 'sometimes|string|max:255',
             'externalFactory' => 'sometimes|string|max:255',
             'totalKgOffloaded' => 'sometimes|numeric|min:0',
+            'totalLive' => 'sometimes|numeric|min:0',
             'totalKgReceived' => 'sometimes|numeric|min:0',
             'totalKgDead' => 'sometimes|numeric|min:0',
             'totalKgRotten' => 'sometimes|numeric|min:0',

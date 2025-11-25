@@ -57,9 +57,98 @@ class LossAdjustmentController extends Controller
      * @param  \Illuminate\Http\Request  $request
      * @return \Illuminate\Http\JsonResponse
      */
+    // public function store(Request $request)
+    // {
+
+    //     $validated = $request->validate([
+    //         'date' => 'required|date|before_or_equal:today',
+    //         'tankId' => 'required|integer',
+    //         'type' => 'required|in:dead,rotten,lost',
+    //         'size' => 'required|in:U,A,B,C,D,E',
+    //         'kg' => 'required|numeric|min:0.01|max:9999.99',
+    //         'reason' => 'nullable|string|max:500',
+    //         'crateId' => 'required|integer',
+    //     ]);
+
+    //     DB::beginTransaction();
+    //     try {
+    //         // Validate that tank has sufficient stock
+    //         $tank = Tank::where('id', $validated['tankId'])->first();
+
+    //         if (!$tank) {
+    //             return response()->json([
+    //                 'message' => 'Tank not found',
+    //             ], 404);
+    //         }
+
+    //         // Check available stock for the specific size
+
+
+    //         $size = $validated['size'];
+    //         $kg = $validated['kg'];
+    //         $crateId = $validated['crateId'];
+
+    //         $crateKg = Crate::where('tankId', $validated['tankId'])
+    //             ->where('size', $size)
+    //             ->whereIn('status', ['stored', 'received']) // adjust statuses as needed
+    //             ->sum('kg');
+
+    //         $looseKg = LooseStock::where('tankId', $validated['tankId'])
+    //             ->where('size', $size)
+    //             ->sum('kg');
+
+    //         $totalSizeStock = $crateKg + $looseKg;
+
+    //         if ($totalSizeStock < $validated['kg']) {
+    //             return response()->json([
+    //                 'message' => 'Insufficient stock',
+    //                 'error' => "Tank {$tank->tankName} has only {$totalSizeStock} kg of size {$validated['size']} available, cannot adjust {$validated['kg']} kg",
+    //             ], 400);
+    //         }
+
+    //         // Deduct from crate
+    //         $crate = Crate::find($crateId);
+    //         if ($crate && $crate->kg >= $kg) {
+    //             $crate->kg -= $kg;
+    //             $crate->save();
+    //         } else {
+    //             // Optionally, handle deduction from loose stock if not enough in crate
+    //             DB::rollBack();
+    //             return response()->json([
+    //                 'message' => 'Insufficient crate stock',
+    //                 'error' => "Crate does not have enough kg",
+    //             ], 400);
+    //         }
+
+    //          // Deduct from tank summary columns
+    //         $sizeField = 'size' . $size;
+    //         $tank->decrement($sizeField, $kg);
+    //         $tank->decrement('totalKg', $kg);
+
+    //         // Create loss adjustment record
+    //         $lossAdjustment = $request->user()->lossAdjustments()->create($validated);
+
+    //         // Deduct from tank inventory
+    //         // $tank->decrement($sizeField, $validated['kg']);
+    //         // $tank->decrement('totalKg', $validated['kg']);
+
+    //         DB::commit();
+
+    //         return response()->json([
+    //             'message' => 'Loss adjustment created successfully',
+    //             'data' => $lossAdjustment->load('user:id,name,email'),
+    //         ], 201);
+    //     } catch (\Exception $e) {
+    //         DB::rollBack();
+    //         return response()->json([
+    //             'message' => 'Error creating loss adjustment',
+    //             'error' => $e->getMessage(),
+    //         ], 500);
+    //     }
+    // }
+
     public function store(Request $request)
     {
-
         $validated = $request->validate([
             'date' => 'required|date|before_or_equal:today',
             'tankId' => 'required|integer',
@@ -72,43 +161,26 @@ class LossAdjustmentController extends Controller
 
         DB::beginTransaction();
         try {
-            // Validate that tank has sufficient stock
+            // Validate that tank exists
             $tank = Tank::where('id', $validated['tankId'])->first();
-
             if (!$tank) {
                 return response()->json([
                     'message' => 'Tank not found',
                 ], 404);
             }
 
-            // Check available stock for the specific size
-
-
-            $size = $validated['size'];
-            $crateKg = Crate::where('tankId', $validated['tankId'])
-                ->where('size', $size)
-                ->whereIn('status', ['stored', 'received']) // adjust statuses as needed
-                ->sum('kg');
-
-            $looseKg = LooseStock::where('tankId', $validated['tankId'])
-                ->where('size', $size)
-                ->sum('kg');
-
-            $totalSizeStock = $crateKg + $looseKg;
-
-            if ($totalSizeStock < $validated['kg']) {
+            // Validate that crate exists and belongs to the tank
+            $crate = Crate::where('id', $validated['crateId'])
+                ->where('tankId', $validated['tankId'])
+                ->first();
+            if (!$crate) {
                 return response()->json([
-                    'message' => 'Insufficient stock',
-                    'error' => "Tank {$tank->tankName} has only {$totalSizeStock} kg of size {$validated['size']} available, cannot adjust {$validated['kg']} kg",
-                ], 400);
+                    'message' => 'Crate not found in specified tank',
+                ], 404);
             }
 
-            // Create loss adjustment record
+            // Create loss adjustment record (this will be subtracted in stats)
             $lossAdjustment = $request->user()->lossAdjustments()->create($validated);
-
-            // Deduct from tank inventory
-            // $tank->decrement($sizeField, $validated['kg']);
-            // $tank->decrement('totalKg', $validated['kg']);
 
             DB::commit();
 
