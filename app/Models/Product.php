@@ -20,4 +20,9 @@ class Product extends Model
     {
         return $this->hasMany(OffloadRecord::class);
     }
+
+    public function crates()
+    {
+        return $this->hasMany(Crate::class, 'productId');
+    }
 }

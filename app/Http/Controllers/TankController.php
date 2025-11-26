@@ -208,6 +208,7 @@ class TankController extends Controller
                     ->map(function ($crate) {
                         return [
                             'id' => $crate->id,
+                            'productName' => optional($crate->product)->name,
                             'crateNumber' => $crate->crateNumber,
                             'size' => $crate->size,
                             'kg' => $crate->kg,

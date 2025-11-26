@@ -18,6 +18,7 @@ class Crate extends Model
         'status',
         'tankId',
         'user_id',
+        'productId',
     ];
 
      public function receivingBatch()
@@ -31,6 +32,11 @@ class Crate extends Model
     public function user()
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function product()
+    {
+        return $this->belongsTo(Product::class, 'productId');
     }
 
     

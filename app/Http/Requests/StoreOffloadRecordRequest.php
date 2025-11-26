@@ -38,6 +38,7 @@ class StoreOffloadRecordRequest extends FormRequest
             'sizeD' => 'nullable|numeric|min:0',
             'sizeE' => 'nullable|numeric|min:0',
             'sizeM' => 'nullable|numeric|min:0',
+            'productId' => 'required|exists:products,id',
         ];
     }
 
@@ -78,6 +79,7 @@ class StoreOffloadRecordRequest extends FormRequest
             'sizeC' => (float) ($this->sizeC ?? 0),
             'sizeD' => (float) ($this->sizeD ?? 0),
             'sizeE' => (float) ($this->sizeE ?? 0),
+            'sizeM' => (float) ($this->sizeM ?? 0),
         ]);
     }
 }

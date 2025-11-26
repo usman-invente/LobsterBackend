@@ -41,6 +41,7 @@ class ReceivingBatchController extends Controller
             'lineItems.*.crateNumber' => 'required|integer|unique:crates,crateNumber',
             'lineItems.*.size' => 'required|in:U,A,B,C,D,E,M',
             'lineItems.*.kg' => 'required|numeric|min:0|regex:/^\d+(\.\d{1,2})?$/',
+            'lineItems.*.productId' => 'required|exists:products,id',
         ], [
             'batchNumber.unique' => 'This batch number already exists.',
             'lineItems.*.crateNumber.unique' => 'Crate number :input has already been registered.',
@@ -52,6 +53,8 @@ class ReceivingBatchController extends Controller
             'lineItems.*.size.in' => 'Size must be one of: U, A, B, C, D, E.',
             'lineItems.*.kg.required' => 'Weight is required for each line item.',
             'lineItems.*.kg.numeric' => 'Weight must be a valid number.',
+            'lineItems.*.productId.required' => 'Product ID is required for each line item.',
+            'lineItems.*.productId.exists' => 'Product ID :input does not exist.',
             'lineItems.*.kg.min' => 'Weight must be greater than or equal to 0.',
             'lineItems.*.kg.regex' => 'Weight must have at most 2 decimal places.',
             'date.required' => 'Batch date is required.',
@@ -74,6 +77,7 @@ class ReceivingBatchController extends Controller
                     'offloadDate' => $lineItem['offloadDate'],
                     'crateNumber' => $lineItem['crateNumber'],
                     'size' => $lineItem['size'],
+                    'productId' => $lineItem['productId'],
                     'kg' => $lineItem['kg'],
                     'originalKg' => $lineItem['kg'],
                     'originalSize' => $lineItem['size'],
@@ -119,6 +123,7 @@ class ReceivingBatchController extends Controller
             'lineItems' => 'required|array|min:1',
             'lineItems.*.boatName' => 'required|string|max:255',
             'lineItems.*.offloadDate' => 'required|date',
+            'lineItems.*.productId' => 'required|exists:products,id',
             'lineItems.*.crateNumber' => 'required|integer|min:1|max:300',
             'lineItems.*.size' => 'required|in:U,A,B,C,D,E,M',
             'lineItems.*.kg' => 'required|numeric|min:0.01',
@@ -145,6 +150,7 @@ class ReceivingBatchController extends Controller
                     $crate->update([
                         'boatName' => $item['boatName'],
                         'offloadDate' => $item['offloadDate'],
+                        'productId' => $item['productId'],
                         'crateNumber' => $item['crateNumber'],
                         'size' => $item['size'],
                         'kg' => $item['kg'],
@@ -156,6 +162,7 @@ class ReceivingBatchController extends Controller
                     'boatName' => $item['boatName'],
                     'offloadDate' => $item['offloadDate'],
                     'crateNumber' => $item['crateNumber'],
+                    'productId' => $item['productId'],
                     'size' => $item['size'],
                     'kg' => $item['kg'],
                     'originalSize' => $item['size'],  // Add this

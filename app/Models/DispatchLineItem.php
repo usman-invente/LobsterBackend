@@ -25,8 +25,13 @@ class DispatchLineItem extends Model
         'isLoose' => 'boolean',
     ];
 
-     public function dispatch()
+    public function dispatch()
     {
         return $this->belongsTo(Dispatch::class);
+    }
+
+    public function crate()
+    {
+        return $this->belongsTo(Crate::class, 'crateId');
     }
 }

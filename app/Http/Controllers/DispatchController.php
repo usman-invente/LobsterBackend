@@ -238,8 +238,13 @@ class DispatchController extends Controller
 
     public function show(Dispatch $dispatch)
     {
+        $dispatch->load(['lineItems.crate.product', 'user']);
+        $dispatch->lineItems->transform(function ($item) {
+            $item->productName = optional(optional($item->crate)->product)->name;
+            return $item;
+        });
         return response()->json([
-            'data' => $dispatch->load(['lineItems', 'user']),
+            'data' => $dispatch,
         ]);
     }
 
