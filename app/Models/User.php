@@ -76,4 +76,9 @@ class User extends Authenticatable
     {
         return $this->hasMany(LossAdjustment::class);
     }
+
+    public function products()
+    {
+        return $this->hasMany(Product::class, 'created_by');
+    }
 }

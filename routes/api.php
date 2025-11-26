@@ -14,7 +14,7 @@ use App\Http\Controllers\TankController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\ReportsController;
-
+use App\Http\Controllers\ProductController;
 Route::controller(RegisterController::class)->group(function () {
     Route::post('register', 'register');
     Route::post('login', 'login');
@@ -36,6 +36,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/reports/stock-by-tanks', [ReportsController::class, 'stockByTanks']);
     Route::get('/reports/stock-by-size', [ReportsController::class, 'stockBySize']);
     Route::get('/reports/stock-by-boat', [ReportsController::class, 'stockByBoat']);
+});
+
+Route::middleware('auth:sanctum')->group(function () {
+    Route::apiResource('products', ProductController::class);
 });
 
 

@@ -23,6 +23,7 @@ class OffloadRecord extends Model
         'sizeD',
         'sizeE',
         'user_id',
+        'productId'
     ];
 
     protected $casts = [
@@ -46,4 +47,9 @@ class OffloadRecord extends Model
     {
         return $this->belongsTo(User::class);
     }
+
+    public function product()
+{
+    return $this->belongsTo(Product::class);
+}
 }
