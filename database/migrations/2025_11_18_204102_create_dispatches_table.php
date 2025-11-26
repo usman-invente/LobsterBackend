@@ -34,7 +34,7 @@ return new class extends Migration
             $table->integer('tankNumber');
             $table->string('crateId')->nullable();
             $table->string('looseStockId')->nullable();
-            $table->enum('size', ['U', 'A', 'B', 'C', 'D', 'E']);
+            $table->enum('size', ['U', 'A', 'B', 'C', 'D', 'E', 'M']);
             $table->decimal('kg', 10, 2);
             $table->integer('crateNumber')->nullable();
             $table->boolean('isLoose')->default(false);

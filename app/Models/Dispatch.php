@@ -17,6 +17,7 @@ class Dispatch extends Model
         'sizeC',
         'sizeD',
         'sizeE',
+        'sizeM',
         'user_id',
     ];
 
@@ -29,6 +30,7 @@ class Dispatch extends Model
         'sizeC' => 'decimal:2',
         'sizeD' => 'decimal:2',
         'sizeE' => 'decimal:2',
+        'sizeM' => 'decimal:2',
     ];
 
      public function user()

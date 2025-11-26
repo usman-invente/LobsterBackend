@@ -134,8 +134,8 @@ class DispatchController extends Controller
             'lineItems.*.tankId' => 'required|integer',
             'lineItems.*.tankNumber' => 'required|integer',
             'lineItems.*.crateId' => 'nullable',
-            'lineItems.*.looseStockId' => 'nullable|string',
-            'lineItems.*.size' => 'required|in:U,A,B,C,D,E',
+            'lineItems.*.looseStockId' => 'nullable|integer',
+            'lineItems.*.size' => 'required|in:U,A,B,C,D,E,M',
             'lineItems.*.kg' => 'required|numeric|min:0.01',
             'lineItems.*.crateNumber' => 'nullable|integer',
             'lineItems.*.isLoose' => 'required|boolean',
@@ -146,6 +146,7 @@ class DispatchController extends Controller
             'sizeC' => 'required|numeric|min:0',
             'sizeD' => 'required|numeric|min:0',
             'sizeE' => 'required|numeric|min:0',
+            'sizeM' => 'required|numeric|min:0',
         ]);
 
         // Validate total matches sum
@@ -192,7 +193,7 @@ class DispatchController extends Controller
                 'sizeB' => $validated['sizeB'],
                 'sizeC' => $validated['sizeC'],
                 'sizeD' => $validated['sizeD'],
-                'sizeE' => $validated['sizeE'],
+                'sizeM' => $validated['sizeM'],
             ]);
 
             // Create line items and update stock
@@ -205,7 +206,7 @@ class DispatchController extends Controller
 
                     if ($crate->kg == $itemData['kg']) {
                         // Full dispatch - mark as dispatched
-                        $crate->update(['status' => 'dispatched']);
+                       $crate->update(['status' => 'dispatched', 'kg' => 0,'originalKg' => 0]);
                     } else {
                         // Partial dispatch - reduce kg but keep stored
                         $crate->update([
@@ -256,7 +257,7 @@ class DispatchController extends Controller
             'lineItems.*.tankNumber' => 'required|integer',
             'lineItems.*.crateId' => 'nullable|integer',
             'lineItems.*.looseStockId' => 'nullable|integer',
-            'lineItems.*.size' => 'required|in:U,A,B,C,D,E',
+            'lineItems.*.size' => 'required|in:U,A,B,C,D,E,M',
             'lineItems.*.kg' => 'required|numeric|min:0.01',
             'lineItems.*.crateNumber' => 'nullable|integer',
             'lineItems.*.isLoose' => 'required|boolean',
@@ -267,6 +268,7 @@ class DispatchController extends Controller
             'sizeC' => 'sometimes|numeric|min:0',
             'sizeD' => 'sometimes|numeric|min:0',
             'sizeE' => 'sometimes|numeric|min:0',
+            'sizeM' => 'sometimes|numeric|min:0',
         ]);
 
         DB::beginTransaction();
@@ -280,12 +282,20 @@ class DispatchController extends Controller
                     if (!$oldItem->isLoose && $oldItem->crateId) {
                         $crate = Crate::find($oldItem->crateId);
                         if ($crate) {
-                            $crate->update(['status' => 'stored']);
+                            $crate->kg += $oldItem->kg;
+                            if ($crate->status == 'dispatched') {
+                                $crate->status = 'stored';
+                            }
+                            $crate->save();
                         }
                     } else if ($oldItem->isLoose && $oldItem->looseStockId) {
                         $looseStock = LooseStock::find($oldItem->looseStockId);
                         if ($looseStock) {
-                            $looseStock->update(['status' => 'stored']);
+                            $looseStock->kg += $oldItem->kg;
+                            if ($looseStock->status == 'dispatched') {
+                                $looseStock->status = 'stored';
+                            }
+                            $looseStock->save();
                         }
                     }
                 }
@@ -330,10 +340,20 @@ class DispatchController extends Controller
 
                     if (!$itemData['isLoose']) {
                         $crate = Crate::find($itemData['crateId']);
-                        $crate->update(['status' => 'dispatched']);
+                        $crate->kg -= $itemData['kg'];
+                        if ($crate->kg <= 0) {
+                            $crate->status = 'dispatched';
+                            $crate->kg = 0;
+                        }
+                        $crate->save();
                     } else {
                         $looseStock = LooseStock::find($itemData['looseStockId']);
-                        $looseStock->update(['status' => 'dispatched']);
+                        $looseStock->kg -= $itemData['kg'];
+                        if ($looseStock->kg <= 0) {
+                            $looseStock->status = 'dispatched';
+                            $looseStock->kg = 0;
+                        }
+                        $looseStock->save();
                     }
                 }
 
@@ -367,6 +387,7 @@ class DispatchController extends Controller
         $sizeC = $lineItems->where('size', 'C')->sum('kg');
         $sizeD = $lineItems->where('size', 'D')->sum('kg');
         $sizeE = $lineItems->where('size', 'E')->sum('kg');
+        $sizeM = $lineItems->where('size', 'M')->sum('kg');
 
         $dispatch->update([
             'totalKg' => $totalKg,
@@ -376,6 +397,7 @@ class DispatchController extends Controller
             'sizeC' => $sizeC,
             'sizeD' => $sizeD,
             'sizeE' => $sizeE,
+            'sizeM' => $sizeM,
         ]);
     }
 
@@ -457,6 +479,7 @@ class DispatchController extends Controller
                 'C' => ['kg' => $dispatches->sum('sizeC')],
                 'D' => ['kg' => $dispatches->sum('sizeD')],
                 'E' => ['kg' => $dispatches->sum('sizeE')],
+                'M' => ['kg' => $dispatches->sum('sizeM')],
             ],
             'dispatches' => $dispatches,
         ];
