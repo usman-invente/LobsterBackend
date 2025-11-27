@@ -162,10 +162,18 @@ class DispatchController extends Controller
             // Validate stock availability
             foreach ($validated['lineItems'] as $item) {
                 if ($item['isLoose']) {
-                    // Validate loose stock
-                    // Add your loose stock validation logic
+                    $looseStock = LooseStock::where('id', $item['looseStockId'])
+                        ->where('status', 'stored')
+                        ->first();
+
+                    if (!$looseStock) {
+                        throw new \Exception("Loose stock not found or not available");
+                    }
+
+                    if ($looseStock->kg < $item['kg']) {
+                        throw new \Exception("Insufficient loose stock amount");
+                    }
                 } else {
-                    // Validate crate
                     $crate = Crate::where('id', $item['crateId'])
                         ->where('status', 'stored')
                         ->first();
@@ -200,7 +208,7 @@ class DispatchController extends Controller
             foreach ($validated['lineItems'] as $itemData) {
                 $dispatch->lineItems()->create($itemData);
 
-                // Update crate status or deduct loose stock
+            // Update crate status or deduct loose stock
                 if (!$itemData['isLoose']) {
                     $crate = Crate::find($itemData['crateId']);
 
@@ -212,6 +220,16 @@ class DispatchController extends Controller
                         $crate->update([
                             'kg' => $crate->kg - $itemData['kg'],
                             'status' => 'stored' // Ensure it stays stored
+                        ]);
+                    }
+                } else {
+                    $looseStock = LooseStock::find($itemData['looseStockId']);
+                    if ($looseStock->kg == $itemData['kg']) {
+                        $looseStock->update(['status' => 'dispatched', 'kg' => 0]);
+                    } else {
+                        $looseStock->update([
+                            'kg' => $looseStock->kg - $itemData['kg'],
+                            'status' => 'stored'
                         ]);
                     }
                 }
