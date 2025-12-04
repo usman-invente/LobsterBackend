@@ -13,67 +13,74 @@ use App\Models\LossAdjustment;
 
 class DashboardController extends Controller
 {
-    public function stats()
-    {
-        $query = Tank::query();
-        // Sum of all crate kg
-        $cratesKg = \App\Models\Crate::sum('kg');
-        // Sum of all loose stock kg
-        $looseStockKg = \App\Models\LooseStock::sum('kg');
-        // Sum of all losses kg
-        $lossesKg = LossAdjustment::sum('kg'); // Make sure you have a Loss model/table
+   public function stats(Request $request)
+{
+    $productId = $request->input('product');
 
-        // Total stock = crates + loose - losses
-        $totalStock = $cratesKg + $looseStockKg - $lossesKg;
+    // Sum of all crate kg (global)
+    $cratesKg = \App\Models\Crate::sum('kg');
+    // Sum of all loose stock kg (global)
+    $looseStockKg = \App\Models\LooseStock::sum('kg');
+    // Sum of all losses kg (global)
+    $lossesKg = LossAdjustment::sum('kg');
 
-        // Size breakdown with all sizes initialized to 0
-        $sizeBreakdown = [
-            'U' => 0,
-            'A' => 0,
-            'B' => 0,
-            'C' => 0,
-            'D' => 0,
-            'E' => 0,
-        ];
-        $existingSizes = \App\Models\Crate::selectRaw('size, sum(kg) as total_kg')
-            ->groupBy('size')
-            ->pluck('total_kg', 'size')
-            ->toArray();
-        $sizeBreakdown = array_merge($sizeBreakdown, $existingSizes);
+    // Total stock = crates + loose - losses (global)
+    $totalStock = $cratesKg + $looseStockKg - $lossesKg;
 
-        return response()->json([
-            'total_stock_kg' => $totalStock,
-            'total_crates' => Crate::count(),
-            'total_tanks' => Tank::count(),
-            'total_batches' => ReceivingBatch::count(),
-            'total_offloads' => OffloadRecord::count(),
-            'total_loss_stock' => LossAdjustment::sum('kg'),
-            'crates_stored' => Crate::where('status', 'stored')->count(),
-            'crates_received' => Crate::where('status', 'received')->count(),
-            'crates_rechecked' => Crate::where('status', 'rechecked')->count(),
-            'recent_offloads' => OffloadRecord::orderBy('offloadDate', 'desc')->take(5)->get(),
-            'recent_dispatches' => Dispatch::orderBy('dispatchDate', 'desc')->take(5)
-                ->get(['id', 'clientAwb', 'type', 'totalKg', 'dispatchDate']),
-            'tank_summary' => Tank::where('status', 1)
-                ->withCount('crates')
-                ->orderBy('tankName')
-                ->get()
-                ->map(function ($tank) {
-                    // Sum of kg for all crates in this tank
-                    $totalKg = \App\Models\Crate::where('tankId', $tank->id)->sum('kg');
-                    // Sum of loose stock for this tank (optional)
-                    $looseStock = \App\Models\LooseStock::where('tankId', $tank->id)->sum('kg');
-                    return [
-                        'id' => $tank->id,
-                        'tankName' => $tank->tankName,
-                        'tankNumber' => $tank->tankNumber,
-                        'crates_count' => $tank->crates_count,
-                        'totalKg' => $totalKg,
-                        'looseStock' => $looseStock,
-                    ];
-                }),
-                  'size_breakdown' => $sizeBreakdown,
-            // Add more stats as needed
-        ]);
+    // Size breakdown (filtered by product if provided)
+    $sizeBreakdown = [
+        'U' => 0,
+        'A' => 0,
+        'B' => 0,
+        'C' => 0,
+        'D' => 0,
+        'E' => 0,
+        'M' => 0
+
+
+    ];
+    $crateSizeQuery = \App\Models\Crate::query();
+    if ($productId) {
+        $crateSizeQuery->where('productId', $productId);
     }
+    $existingSizes = $crateSizeQuery
+        ->selectRaw('size, sum(kg) as total_kg')
+        ->groupBy('size')
+        ->pluck('total_kg', 'size')
+        ->toArray();
+    $sizeBreakdown = array_merge($sizeBreakdown, $existingSizes);
+
+    return response()->json([
+        'total_stock_kg' => $totalStock,
+        'total_crates' => \App\Models\Crate::count(),
+        'total_tanks' => \App\Models\Tank::count(),
+        'total_batches' => \App\Models\ReceivingBatch::count(),
+        'total_offloads' => \App\Models\OffloadRecord::count(),
+        'total_loss_stock' => LossAdjustment::sum('kg'),
+        'crates_stored' => \App\Models\Crate::where('status', 'stored')->count(),
+        'crates_received' => \App\Models\Crate::where('status', 'received')->count(),
+        'crates_rechecked' => \App\Models\Crate::where('status', 'rechecked')->count(),
+        'recent_offloads' => \App\Models\OffloadRecord::orderBy('offloadDate', 'desc')->take(5)->get(),
+        'recent_dispatches' => \App\Models\Dispatch::orderBy('dispatchDate', 'desc')->take(5)
+            ->get(['id', 'clientAwb', 'type', 'totalKg', 'dispatchDate']),
+        'tank_summary' => \App\Models\Tank::where('status', 1)
+            ->withCount('crates')
+            ->orderBy('tankName')
+            ->get()
+            ->map(function ($tank) {
+                $totalKg = \App\Models\Crate::where('tankId', $tank->id)->sum('kg');
+                $looseStock = \App\Models\LooseStock::where('tankId', $tank->id)->sum('kg');
+                return [
+                    'id' => $tank->id,
+                    'tankName' => $tank->tankName,
+                    'tankNumber' => $tank->tankNumber,
+                    'crates_count' => $tank->crates_count,
+                    'totalKg' => $totalKg,
+                    'looseStock' => $looseStock,
+                ];
+            }),
+        'size_breakdown' => $sizeBreakdown,
+        // Add more stats as needed
+    ]);
+}
 }
