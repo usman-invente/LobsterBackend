@@ -25,4 +25,9 @@ class Product extends Model
     {
         return $this->hasMany(Crate::class, 'productId');
     }
+
+    public function sizes()
+    {
+        return $this->hasMany(ProductSize::class);
+    }
 }

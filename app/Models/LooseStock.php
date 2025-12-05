@@ -15,6 +15,7 @@ class LooseStock extends Model
         'boatName',
         'offloadDate',
         'user_id',
+        'productId',
     ];
     
     protected $casts = [

@@ -39,7 +39,7 @@ class ReceivingBatchController extends Controller
             'lineItems.*.boatName' => 'required|string|max:255',
             'lineItems.*.offloadDate' => 'required|date',
             'lineItems.*.crateNumber' => 'required|integer|unique:crates,crateNumber',
-            'lineItems.*.size' => 'required|in:U,A,B,C,D,E,M',
+            'lineItems.*.size' => 'required',
             'lineItems.*.kg' => 'required|numeric|min:0|regex:/^\d+(\.\d{1,2})?$/',
             'lineItems.*.productId' => 'required|exists:products,id',
         ], [
@@ -125,7 +125,7 @@ class ReceivingBatchController extends Controller
             'lineItems.*.offloadDate' => 'required|date',
             'lineItems.*.productId' => 'required|exists:products,id',
             'lineItems.*.crateNumber' => 'required|integer|min:1|max:300',
-            'lineItems.*.size' => 'required|in:U,A,B,C,D,E,M',
+            'lineItems.*.size' => 'required',
             'lineItems.*.kg' => 'required|numeric|min:0.01',
         ]);
 

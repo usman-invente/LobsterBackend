@@ -62,23 +62,52 @@ class OffloadRecordController extends Controller
     {
         DB::beginTransaction();
         try {
-            // Validate that size breakdown matches total
-            $sizeTotal = $request->sizeU + $request->sizeA + $request->sizeB +
-                $request->sizeC + $request->sizeD + $request->sizeE + $request->sizeM;
-
-            if (abs($sizeTotal - $request->totalKgAlive) > 0.01) {
+            // Get the product and its sizes
+            $product = \App\Models\Product::with('sizes')->find($request->productId);
+            if (!$product) {
                 return response()->json([
                     'message' => 'Validation failed',
                     'errors' => [
-                        'totalKgAlive' => [
-                            'Size breakdown total does not match total kg alive'
+                        'productId' => ['Product not found']
+                    ],
+                ], 422);
+            }
+
+            // Build sizes array from request payload: sizes => {key: value}
+            $sizesPayload = (array) $request->input('sizes', []);
+            $validSizeNames = collect($product->sizes)->map(function ($s) {
+                return is_array($s) ? ($s['size'] ?? null) : $s->size;
+            })->filter()->values()->all();
+
+            $sizes = [];
+            $sizeTotal = 0.0;
+            foreach ($validSizeNames as $sizeName) {
+                $raw = $sizesPayload[$sizeName] ?? 0;
+                $value = is_numeric($raw) ? (float) $raw : 0.0;
+                $sizes[$sizeName] = $value;
+                $sizeTotal += $value;
+            }
+
+            // Validate that size breakdown matches total live kg
+            $totalLive = (float) ($request->input('totalLive', 0));
+            if (abs($sizeTotal - $totalLive) > 0.01) {
+                return response()->json([
+                    'message' => 'Validation failed',
+                    'errors' => [
+                        'totalLive' => [
+                            'Size breakdown total does not match total live kg'
                         ]
                     ],
                 ], 422);
             }
 
+            // Prepare data, excluding hardcoded size fields and adding sizes
+            $data = $request->validated();
+            unset($data['sizeU'], $data['sizeA'], $data['sizeB'], $data['sizeC'], $data['sizeD'], $data['sizeE'], $data['sizeM']);
+            $data['sizes'] = $sizes;
+
             // Create the offload record
-            $offloadRecord = $request->user()->offloadRecords()->create($request->validated());
+            $offloadRecord = $request->user()->offloadRecords()->create($data);
 
             DB::commit();
 
@@ -127,35 +156,48 @@ class OffloadRecordController extends Controller
     {
         DB::beginTransaction();
         try {
-            // If updating sizes, validate total
-            if (
-                $request->has('totalKgAlive') ||
-                $request->hasAny(['sizeU', 'sizeA', 'sizeB', 'sizeC', 'sizeD', 'sizeE'])
-            ) {
-
-                $totalKg = $request->get('totalKgAlive', $offloadRecord->totalKgAlive);
-                $sizeTotal =
-                    $request->get('sizeU', $offloadRecord->sizeU) +
-                    $request->get('sizeA', $offloadRecord->sizeA) +
-                    $request->get('sizeB', $offloadRecord->sizeB) +
-                    $request->get('sizeC', $offloadRecord->sizeC) +
-                    $request->get('sizeD', $offloadRecord->sizeD) +
-                    $request->get('sizeE', $offloadRecord->sizeE)
-                    + $request->get('sizeM', $offloadRecord->sizeM);
-
-                if (abs($sizeTotal - $totalKg) > 0.01) {
-                    return response()->json([
-                        'message' => 'Validation failed',
-                        'errors' => [
-                            'totalKgAlive' => [
-                                'Size breakdown total does not match total kg alive'
-                            ]
-                        ],
-                    ], 422);
-                }
+            $productId = (int) $request->input('productId', $offloadRecord->productId);
+            $product = \App\Models\Product::with('sizes')->find($productId);
+            if (!$product) {
+                return response()->json([
+                    'message' => 'Validation failed',
+                    'errors' => [
+                        'productId' => ['Product not found']
+                    ],
+                ], 422);
             }
 
-            $offloadRecord->update($request->validated());
+            $sizesPayload = (array) $request->input('sizes', $offloadRecord->sizes ?? []);
+            $validSizeNames = collect($product->sizes)->map(function ($s) {
+                return is_array($s) ? ($s['size'] ?? null) : $s->size;
+            })->filter()->values()->all();
+
+            $sizes = [];
+            $sizeTotal = 0.0;
+            foreach ($validSizeNames as $sizeName) {
+                $raw = $sizesPayload[$sizeName] ?? 0;
+                $value = is_numeric($raw) ? (float) $raw : 0.0;
+                $sizes[$sizeName] = $value;
+                $sizeTotal += $value;
+            }
+
+            $totalLive = (float) ($request->input('totalLive', $offloadRecord->totalLive ?? 0));
+            if (abs($sizeTotal - $totalLive) > 0.01) {
+                return response()->json([
+                    'message' => 'Validation failed',
+                    'errors' => [
+                        'totalLive' => [
+                            'Size breakdown total does not match total live kg'
+                        ]
+                    ],
+                ], 422);
+            }
+
+            $data = $request->validated();
+            unset($data['sizeU'], $data['sizeA'], $data['sizeB'], $data['sizeC'], $data['sizeD'], $data['sizeE'], $data['sizeM']);
+            $data['sizes'] = $sizes;
+
+            $offloadRecord->update($data);
 
             DB::commit();
 

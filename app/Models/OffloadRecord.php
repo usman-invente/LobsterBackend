@@ -16,15 +16,9 @@ class OffloadRecord extends Model
         'totalKgDead',
         'totalKgRotten',
         'totalLive',
-        'sizeU',
-        'sizeA',
-        'sizeB',
-        'sizeC',
-        'sizeD',
-        'sizeM',
-        'sizeE',
         'user_id',
-        'productId'
+        'productId',
+        'sizes',
     ];
 
     protected $casts = [
@@ -33,13 +27,8 @@ class OffloadRecord extends Model
         'totalKgReceived' => 'decimal:2',
         'totalKgDead' => 'decimal:2',
         'totalKgRotten' => 'decimal:2',
-        'sizeU' => 'decimal:2',
-        'sizeA' => 'decimal:2',
-        'sizeB' => 'decimal:2',
-        'sizeC' => 'decimal:2',
-        'sizeD' => 'decimal:2',
-        'sizeE' => 'decimal:2',
-        'sizeM' => 'decimal:2',
+         'sizes' => 'array',
+      
     ];
 
     /**

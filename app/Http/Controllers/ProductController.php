@@ -7,11 +7,12 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Http\JsonResponse;
 use App\Models\Product;
+
 class ProductController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        $query = Product::query();
+        $query = Product::with('sizes');
 
         // Search functionality
         if ($request->has('search') && !empty($request->search)) {
@@ -22,20 +23,25 @@ class ProductController extends Controller
         // Sorting
         $sortBy = $request->get('sort_by', 'name');
         $sortDirection = $request->get('sort_direction', 'asc');
-        
+
         // Ensure sort_by is a valid column
         $validSortColumns = ['id', 'name', 'created_at'];
         if (!in_array($sortBy, $validSortColumns)) {
             $sortBy = 'name';
         }
-        
+
         $query->orderBy($sortBy, $sortDirection);
 
         // Pagination
         $perPage = $request->get('per_page', 10);
-        $products = $query->paginate($perPage);
 
-        return response()->json($products);
+        if ($perPage === 'all') {
+            $products = $query->get();
+            return response()->json(['data' => $products]);
+        } else {
+            $products = $query->paginate($perPage);
+            return response()->json($products);
+        }
     }
 
     /**
@@ -45,6 +51,8 @@ class ProductController extends Controller
     {
         $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:255|unique:products,name',
+            'sizes' => 'required|array|min:1',
+            'sizes.*' => 'required|string|max:10'
         ]);
 
         if ($validator->fails()) {
@@ -59,9 +67,13 @@ class ProductController extends Controller
             'created_by' => Auth::id(),
         ]);
 
+        foreach ($request->sizes as $size) {
+            $product->sizes()->create(['size' => $size]);
+        }
+
         return response()->json([
             'message' => 'Product created successfully',
-            'data' => $product
+            'data' => $product->load('sizes')
         ], 201);
     }
 
@@ -80,7 +92,8 @@ class ProductController extends Controller
     {
         $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:255|unique:products,name,' . $product->id,
-           
+            'sizes' => 'required|array|min:1',
+            'sizes.*' => 'required|string|max:10'
         ]);
 
         if ($validator->fails()) {
@@ -90,14 +103,21 @@ class ProductController extends Controller
             ], 422);
         }
 
-        $product->update($request->only([
-            'name',
-            
-        ]));
+        $product->update([
+            'name' => $request->name,
+        ]);
+
+        // Sync sizes
+        $sizes = $request->sizes;
+        // Remove all old sizes and add new ones
+        $product->sizes()->delete();
+        foreach ($sizes as $size) {
+            $product->sizes()->create(['size' => $size]);
+        }
 
         return response()->json([
             'message' => 'Product updated successfully',
-            'data' => $product
+            'data' => $product->load('sizes')
         ]);
     }
 

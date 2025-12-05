@@ -11,6 +11,7 @@ class Dispatch extends Model
         'clientAwb',
         'dispatchDate',
         'totalKg',
+        'sizes',
         'sizeU',
         'sizeA',
         'sizeB',
@@ -24,6 +25,7 @@ class Dispatch extends Model
      protected $casts = [
         'dispatchDate' => 'date',
         'totalKg' => 'decimal:2',
+        'sizes' => 'array',
         'sizeU' => 'decimal:2',
         'sizeA' => 'decimal:2',
         'sizeB' => 'decimal:2',

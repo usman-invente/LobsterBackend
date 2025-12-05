@@ -3,6 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\Tank;
+use App\Models\Product;
+use App\Models\Crate;
+use App\Models\LooseStock;
 use Illuminate\Http\Request;
 
 class ReportsController extends Controller
@@ -26,24 +29,26 @@ class ReportsController extends Controller
         return response()->json(['data' => $data]);
     }
 
-    public function stockBySize()
+    public function stockBySize(Request $request)
     {
-        $sizes = ['U', 'A', 'B', 'C', 'D', 'E'];
-        $result = [
-            'totalKg' => 0,
-            'sizeU' => 0,
-            'sizeA' => 0,
-            'sizeB' => 0,
-            'sizeC' => 0,
-            'sizeD' => 0,
-            'sizeE' => 0,
-        ];
+        $productId = $request->input('productId');
+        if (!$productId) {
+            return response()->json(['data' => []]);
+        }
 
-        foreach ($sizes as $size) {
-            $crateKg = \App\Models\Crate::where('size', $size)->sum('kg');
-            $looseKg = \App\Models\LooseStock::where('size', $size)->sum('kg');
+        $product = Product::find($productId);
+        if (!$product) {
+            return response()->json(['data' => []]);
+        }
+
+        $sizes = $product->sizes->pluck('size')->toArray();
+        $result = ['totalKg' => 0];
+
+        foreach ($sizes as $sizeName) {
+            $crateKg = Crate::where('size', $sizeName)->where('productId', $productId)->sum('kg');
+            $looseKg = LooseStock::where('size', $sizeName)->where('productId', $productId)->sum('kg');
             $totalKg = $crateKg + $looseKg;
-            $result['size' . $size] = $totalKg;
+            $result['size' . $sizeName] = $totalKg;
             $result['totalKg'] += $totalKg;
         }
 

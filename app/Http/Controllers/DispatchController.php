@@ -135,18 +135,12 @@ class DispatchController extends Controller
             'lineItems.*.tankNumber' => 'required|integer',
             'lineItems.*.crateId' => 'nullable',
             'lineItems.*.looseStockId' => 'nullable|integer',
-            'lineItems.*.size' => 'required|in:U,A,B,C,D,E,M',
+            'lineItems.*.size' => 'required',
             'lineItems.*.kg' => 'required|numeric|min:0.01',
             'lineItems.*.crateNumber' => 'nullable|integer',
             'lineItems.*.isLoose' => 'required|boolean',
             'totalKg' => 'required|numeric|min:0.01',
-            'sizeU' => 'required|numeric|min:0',
-            'sizeA' => 'required|numeric|min:0',
-            'sizeB' => 'required|numeric|min:0',
-            'sizeC' => 'required|numeric|min:0',
-            'sizeD' => 'required|numeric|min:0',
-            'sizeE' => 'required|numeric|min:0',
-            'sizeM' => 'required|numeric|min:0',
+           
         ]);
 
         // Validate total matches sum
@@ -190,18 +184,21 @@ class DispatchController extends Controller
                 }
             }
 
+            // Build dynamic sizes summary from line items
+            $sizesSummary = [];
+            foreach ($validated['lineItems'] as $item) {
+                $key = (string) $item['size'];
+                $val = (float) $item['kg'];
+                $sizesSummary[$key] = ($sizesSummary[$key] ?? 0) + $val;
+            }
+
             // Create dispatch
             $dispatch = $request->user()->dispatches()->create([
                 'type' => $validated['type'],
                 'clientAwb' => $validated['clientAwb'],
                 'dispatchDate' => $validated['dispatchDate'],
                 'totalKg' => $validated['totalKg'],
-                'sizeU' => $validated['sizeU'],
-                'sizeA' => $validated['sizeA'],
-                'sizeB' => $validated['sizeB'],
-                'sizeC' => $validated['sizeC'],
-                'sizeD' => $validated['sizeD'],
-                'sizeM' => $validated['sizeM'],
+                'sizes' => $sizesSummary,
             ]);
 
             // Create line items and update stock
@@ -235,6 +232,8 @@ class DispatchController extends Controller
                 }
             }
 
+            // Compute legacy size summary columns from line items
+            $this->updateDispatchSummaries($dispatch);
             DB::commit();
 
             return response()->json([
@@ -280,18 +279,11 @@ class DispatchController extends Controller
             'lineItems.*.tankNumber' => 'required|integer',
             'lineItems.*.crateId' => 'nullable|integer',
             'lineItems.*.looseStockId' => 'nullable|integer',
-            'lineItems.*.size' => 'required|in:U,A,B,C,D,E,M',
+            'lineItems.*.size' => 'required',
             'lineItems.*.kg' => 'required|numeric|min:0.01',
             'lineItems.*.crateNumber' => 'nullable|integer',
             'lineItems.*.isLoose' => 'required|boolean',
             'totalKg' => 'sometimes|numeric|min:0.01',
-            'sizeU' => 'sometimes|numeric|min:0',
-            'sizeA' => 'sometimes|numeric|min:0',
-            'sizeB' => 'sometimes|numeric|min:0',
-            'sizeC' => 'sometimes|numeric|min:0',
-            'sizeD' => 'sometimes|numeric|min:0',
-            'sizeE' => 'sometimes|numeric|min:0',
-            'sizeM' => 'sometimes|numeric|min:0',
         ]);
 
         DB::beginTransaction();
@@ -404,23 +396,16 @@ class DispatchController extends Controller
         $lineItems = $dispatch->lineItems;
 
         $totalKg = $lineItems->sum('kg');
-        $sizeU = $lineItems->where('size', 'U')->sum('kg');
-        $sizeA = $lineItems->where('size', 'A')->sum('kg');
-        $sizeB = $lineItems->where('size', 'B')->sum('kg');
-        $sizeC = $lineItems->where('size', 'C')->sum('kg');
-        $sizeD = $lineItems->where('size', 'D')->sum('kg');
-        $sizeE = $lineItems->where('size', 'E')->sum('kg');
-        $sizeM = $lineItems->where('size', 'M')->sum('kg');
+
+        $sizes = [];
+        foreach ($lineItems as $item) {
+            $key = (string) $item->size;
+            $sizes[$key] = ($sizes[$key] ?? 0) + (float) $item->kg;
+        }
 
         $dispatch->update([
             'totalKg' => $totalKg,
-            'sizeU' => $sizeU,
-            'sizeA' => $sizeA,
-            'sizeB' => $sizeB,
-            'sizeC' => $sizeC,
-            'sizeD' => $sizeD,
-            'sizeE' => $sizeE,
-            'sizeM' => $sizeM,
+            'sizes' => $sizes,
         ]);
     }
 
@@ -495,17 +480,20 @@ class DispatchController extends Controller
                     'totalKg' => $dispatches->where('type', 'regrade')->sum('totalKg'),
                 ],
             ],
-            'bySize' => [
-                'U' => ['kg' => $dispatches->sum('sizeU')],
-                'A' => ['kg' => $dispatches->sum('sizeA')],
-                'B' => ['kg' => $dispatches->sum('sizeB')],
-                'C' => ['kg' => $dispatches->sum('sizeC')],
-                'D' => ['kg' => $dispatches->sum('sizeD')],
-                'E' => ['kg' => $dispatches->sum('sizeE')],
-                'M' => ['kg' => $dispatches->sum('sizeM')],
-            ],
+            'bySize' => [],
             'dispatches' => $dispatches,
         ];
+
+        $sizeTotals = [];
+        foreach ($dispatches as $d) {
+            $sizes = (array) ($d->sizes ?? []);
+            foreach ($sizes as $key => $val) {
+                $sizeTotals[$key] = ($sizeTotals[$key] ?? 0) + (float) $val;
+            }
+        }
+        foreach ($sizeTotals as $key => $kg) {
+            $summary['bySize'][$key] = ['kg' => $kg];
+        }
 
         return response()->json(['data' => $summary]);
     }

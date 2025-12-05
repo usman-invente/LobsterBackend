@@ -13,11 +13,12 @@ class LooseStockController extends Controller
     {
         $validated = $request->validate([
             'tankId' => 'required|exists:tanks,id',
-            'size' => 'required|in:U,A,B,C,D,E',
+            'size' => 'required',
             'kg' => 'required|numeric|min:0',
             'fromCrateId' => 'sometimes|exists:crates,id',
             'boatName' => 'sometimes|string',
             'offloadDate' => 'sometimes|date',
+            'productId' => 'required|exists:products,id',
         ]);
         
         return DB::transaction(function () use ($validated) {

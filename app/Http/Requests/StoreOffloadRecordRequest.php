@@ -31,13 +31,6 @@ class StoreOffloadRecordRequest extends FormRequest
             'totalKgDead' => 'nullable|numeric|min:0',
             'totalKgRotten' => 'nullable|numeric|min:0',
             'totalLive' => 'nullable|numeric|min:0',
-            'sizeU' => 'nullable|numeric|min:0',
-            'sizeA' => 'nullable|numeric|min:0',
-            'sizeB' => 'nullable|numeric|min:0',
-            'sizeC' => 'nullable|numeric|min:0',
-            'sizeD' => 'nullable|numeric|min:0',
-            'sizeE' => 'nullable|numeric|min:0',
-            'sizeM' => 'nullable|numeric|min:0',
             'productId' => 'required|exists:products,id',
         ];
     }

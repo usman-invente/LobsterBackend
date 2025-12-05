@@ -28,27 +28,16 @@ class DashboardController extends Controller
     $totalStock = $cratesKg + $looseStockKg - $lossesKg;
 
     // Size breakdown (filtered by product if provided)
-    $sizeBreakdown = [
-        'U' => 0,
-        'A' => 0,
-        'B' => 0,
-        'C' => 0,
-        'D' => 0,
-        'E' => 0,
-        'M' => 0
-
-
-    ];
+   
     $crateSizeQuery = \App\Models\Crate::query();
     if ($productId) {
         $crateSizeQuery->where('productId', $productId);
     }
-    $existingSizes = $crateSizeQuery
-        ->selectRaw('size, sum(kg) as total_kg')
-        ->groupBy('size')
-        ->pluck('total_kg', 'size')
-        ->toArray();
-    $sizeBreakdown = array_merge($sizeBreakdown, $existingSizes);
+   $sizeBreakdown = $crateSizeQuery
+    ->selectRaw('size, sum(kg) as total_kg')
+    ->groupBy('size')
+    ->pluck('total_kg', 'size')
+    ->toArray();
 
     return response()->json([
         'total_stock_kg' => $totalStock,
